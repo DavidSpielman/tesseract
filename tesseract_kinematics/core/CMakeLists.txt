@@ -5,6 +5,7 @@ add_library(
   src/inverse_kinematics.cpp
   src/rop_inv_kin.cpp
   src/rep_inv_kin.cpp
+  src/rtp_inv_kin.cpp
   src/joint_group.cpp
   src/kinematic_group.cpp
   src/kinematics_plugin_factory.cpp
@@ -36,7 +37,7 @@ target_include_directories(${PROJECT_NAME}_core PUBLIC "$<BUILD_INTERFACE:${CMAK
                                                        "$<INSTALL_INTERFACE:include>")
 
 # Add KDL kinematics factories
-add_library(${PROJECT_NAME}_core_factories src/rop_factory.cpp src/rep_factory.cpp)
+add_library(${PROJECT_NAME}_core_factories src/rop_factory.cpp src/rep_factory.cpp src/rtp_factory.cpp)
 target_link_libraries(${PROJECT_NAME}_core_factories PUBLIC ${PROJECT_NAME}_core console_bridge::console_bridge)
 target_compile_options(${PROJECT_NAME}_core_factories PRIVATE ${TESSERACT_COMPILE_OPTIONS_PRIVATE})
 target_compile_options(${PROJECT_NAME}_core_factories PUBLIC ${TESSERACT_COMPILE_OPTIONS_PUBLIC})

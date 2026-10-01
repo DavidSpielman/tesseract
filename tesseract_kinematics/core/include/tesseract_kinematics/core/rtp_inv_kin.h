@@ -24,7 +24,7 @@
 #ifndef TESSERACT_KINEMATICS_RTP_INVERSE_KINEMATICS_H
 #define TESSERACT_KINEMATICS_RTP_INVERSE_KINEMATICS_H
 
-#include <tesseract/common/macros.h>
+#include <tesseract_common/macros.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <memory>
 #include <optional>
@@ -32,12 +32,12 @@ TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <Eigen/Geometry>
 TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
-#include <tesseract/common/eigen_types.h>
-#include <tesseract/common/types.h>
-#include <tesseract/scene_graph/fwd.h>
-#include <tesseract/kinematics/inverse_kinematics.h>
+#include <tesseract_common/eigen_types.h>
+#include <tesseract_common/types.h>
+#include <tesseract_scene_graph/fwd.h>
+#include <tesseract_kinematics/core/inverse_kinematics.h>
 
-namespace tesseract::kinematics
+namespace tesseract_kinematics
 {
 static const std::string DEFAULT_RTP_INV_KIN_SOLVER_NAME = "RTPInvKin";
 class ForwardKinematics;
@@ -103,8 +103,8 @@ public:
    *         or tool-positioner base, or tool-positioner forward kinematics that do not return its
    *         tip link.
    */
-  RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
-            const tesseract::scene_graph::SceneState& scene_state,
+  RTPInvKin(const tesseract_scene_graph::SceneGraph& scene_graph,
+            const tesseract_scene_graph::SceneState& scene_state,
             InverseKinematics::UPtr manipulator,
             double manipulator_reach,
             std::unique_ptr<ForwardKinematics> tool_positioner,
@@ -115,8 +115,8 @@ public:
    * @brief As above, but with an explicit sample range per tool joint instead of the full
    *        tool-joint limits. @p tool_sample_range must have one row per tool joint.
    */
-  RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
-            const tesseract::scene_graph::SceneState& scene_state,
+  RTPInvKin(const tesseract_scene_graph::SceneGraph& scene_graph,
+            const tesseract_scene_graph::SceneState& scene_state,
             InverseKinematics::UPtr manipulator,
             double manipulator_reach,
             std::unique_ptr<ForwardKinematics> tool_positioner,
@@ -132,16 +132,16 @@ public:
    *         computeChainReachUpperBound() (e.g. a mimic joint, or a joint without limits, on
    *         the manipulator chain).
    */
-  RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
-            const tesseract::scene_graph::SceneState& scene_state,
+  RTPInvKin(const tesseract_scene_graph::SceneGraph& scene_graph,
+            const tesseract_scene_graph::SceneState& scene_state,
             InverseKinematics::UPtr manipulator,
             std::unique_ptr<ForwardKinematics> tool_positioner,
             const Eigen::VectorXd& tool_sample_resolution,
             std::string solver_name = DEFAULT_RTP_INV_KIN_SOLVER_NAME);
 
   /** @brief As above, auto-deriving manipulator_reach and taking an explicit tool sample range. */
-  RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
-            const tesseract::scene_graph::SceneState& scene_state,
+  RTPInvKin(const tesseract_scene_graph::SceneGraph& scene_graph,
+            const tesseract_scene_graph::SceneState& scene_state,
             InverseKinematics::UPtr manipulator,
             std::unique_ptr<ForwardKinematics> tool_positioner,
             const Eigen::MatrixX2d& tool_sample_range,
@@ -155,22 +155,22 @@ public:
    *         builds and left to the map lookup otherwise.
    */
   void calcInvKin(IKSolutions& solutions,
-                  const tesseract::common::LinkIdTransformMap& tip_link_poses,
+                  const tesseract_common::TransformMap& tip_link_poses,
                   const Eigen::Ref<const Eigen::VectorXd>& seed) const override final;
 
-  std::vector<tesseract::common::JointId> getJointIds() const override final;
+  std::vector<std::string> getJointNames() const override final;
   Eigen::Index numJoints() const override final;
-  tesseract::common::LinkId getBaseLinkId() const override final;
-  tesseract::common::LinkId getWorkingFrame() const override final;
-  std::vector<tesseract::common::LinkId> getTipLinkIds() const override final;
+  std::string getBaseLinkName() const override final;
+  std::string getWorkingFrame() const override final;
+  std::vector<std::string> getTipLinkNames() const override final;
   std::string getSolverName() const override final;
   InverseKinematics::UPtr clone() const override final;
 
 private:
-  std::vector<tesseract::common::JointId> joint_ids_;
+  std::vector<std::string> joint_ids_;
   InverseKinematics::UPtr manip_inv_kin_;
-  tesseract::common::LinkId manip_tip_link_;
-  tesseract::common::LinkId tool_tip_link_;
+  std::string manip_tip_link_;
+  std::string tool_tip_link_;
   double manip_reach_{ 0 };
   /** @brief Manipulator base origin in its working frame; the centre of the reach filter. */
   Eigen::Vector3d reach_center_{ Eigen::Vector3d::Zero() };
@@ -185,7 +185,7 @@ private:
    * @details Column k of tool_samples_ and entry k here describe the same grid sample. Both are
    *          built once in init(), so calcInvKin() reduces to one transform product per sample.
    */
-  tesseract::common::VectorIsometry3d sample_to_manip_tip_;
+  tesseract_common::VectorIsometry3d sample_to_manip_tip_;
 
   std::string solver_name_{ DEFAULT_RTP_INV_KIN_SOLVER_NAME }; /**< @brief Name of this solver */
 
@@ -195,8 +195,8 @@ private:
    * @param manipulator_reach  Empty to derive it from the manipulator's base->tip chain.
    * @param tool_sample_range  Empty to use the tool joints' full limits.
    */
-  void init(const tesseract::scene_graph::SceneGraph& scene_graph,
-            const tesseract::scene_graph::SceneState& scene_state,
+  void init(const tesseract_scene_graph::SceneGraph& scene_graph,
+            const tesseract_scene_graph::SceneState& scene_state,
             InverseKinematics::UPtr manipulator,
             std::optional<double> manipulator_reach,
             std::unique_ptr<ForwardKinematics> tool_positioner,
@@ -204,5 +204,5 @@ private:
             const Eigen::VectorXd& tool_sample_resolution,
             std::string solver_name);
 };
-}  // namespace tesseract::kinematics
+}  // namespace tesseract_kinematics
 #endif  // TESSERACT_KINEMATICS_RTP_INVERSE_KINEMATICS_H

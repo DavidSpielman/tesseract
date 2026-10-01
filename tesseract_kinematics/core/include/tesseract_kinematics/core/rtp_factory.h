@@ -24,26 +24,22 @@
 #ifndef TESSERACT_KINEMATICS_RTP_FACTORY_H
 #define TESSERACT_KINEMATICS_RTP_FACTORY_H
 
-#include <tesseract/kinematics/kinematics_plugin_factory.h>
+#include <tesseract_kinematics/core/kinematics_plugin_factory.h>
 #include <boost_plugin_loader/macros.h>
 
-namespace tesseract::kinematics
+namespace tesseract_kinematics
 {
 class RTPInvKinFactory : public InvKinFactory
 {
-public:
-  tesseract::common::PropertyTree schema() const override;
-
-protected:
-  std::unique_ptr<InverseKinematics> createImpl(const std::string& solver_name,
-                                                const tesseract::scene_graph::SceneGraph& scene_graph,
-                                                const tesseract::scene_graph::SceneState& scene_state,
+  std::unique_ptr<InverseKinematics> create(const std::string& solver_name,
+                                                const tesseract_scene_graph::SceneGraph& scene_graph,
+                                                const tesseract_scene_graph::SceneState& scene_state,
                                                 const KinematicsPluginFactory& plugin_factory,
-                                                const tesseract::common::PropertyTree& config) const override final;
+                                                const YAML::Node& config) const override final;
 };
 
 PLUGIN_ANCHOR_DECL(RTPInvKinFactoriesAnchor)
 
-}  // namespace tesseract::kinematics
+}  // namespace tesseract_kinematics
 
 #endif  // TESSERACT_KINEMATICS_RTP_FACTORY_H

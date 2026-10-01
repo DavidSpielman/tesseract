@@ -34,7 +34,7 @@
 #ifndef TESSERACT_KINEMATICS_ABB_OPW_FIXTURE_H
 #define TESSERACT_KINEMATICS_ABB_OPW_FIXTURE_H
 
-#include <tesseract/common/macros.h>
+#include <tesseract_common/macros.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <cmath>
 #include <memory>
@@ -42,21 +42,21 @@ TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <opw_kinematics/opw_parameters.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
-#include <tesseract/kinematics/forward_kinematics.h>
-#include <tesseract/common/types.h>
-#include <tesseract/kinematics/inverse_kinematics.h>
-#include <tesseract/kinematics/kdl/kdl_fwd_kin_chain.h>
-#include <tesseract/kinematics/opw/opw_inv_kin.h>
-#include <tesseract/scene_graph/fwd.h>
+#include <tesseract_kinematics/core/forward_kinematics.h>
+#include <tesseract_common/types.h>
+#include <tesseract_kinematics/core/inverse_kinematics.h>
+#include <tesseract_kinematics/kdl/kdl_fwd_kin_chain.h>
+#include <tesseract_kinematics/opw/opw_inv_kin.h>
+#include <tesseract_scene_graph/fwd.h>
 
-namespace tesseract::kinematics::test_suite
+namespace tesseract_kinematics::test_suite
 {
 /** @brief Base of the ABB IRB2400 manipulator chain. */
-inline const tesseract::common::LinkId ABB_BASE_LINK = "base_link";  // NOLINT(cert-err58-cpp)
+inline const std::string ABB_BASE_LINK = "base_link";  // NOLINT(cert-err58-cpp)
 /** @brief Tip of the manipulator chain, and base of the tool positioner chain. */
-inline const tesseract::common::LinkId ABB_MANIP_TIP_LINK = "tool0";  // NOLINT(cert-err58-cpp)
+inline const std::string ABB_MANIP_TIP_LINK = "tool0";  // NOLINT(cert-err58-cpp)
 /** @brief Tip of the tool positioner chain - the frame RTP target poses are expressed for. */
-inline const tesseract::common::LinkId ABB_TOOL_TIP_LINK = "tool_tip";  // NOLINT(cert-err58-cpp)
+inline const std::string ABB_TOOL_TIP_LINK = "tool_tip";  // NOLINT(cert-err58-cpp)
 
 /** @brief OPW parameters for the ABB IRB2400 in support/urdf/abb_irb2400.urdf. */
 inline opw_kinematics::Parameters<double> getOPWKinematicsParamABB()
@@ -74,17 +74,17 @@ inline opw_kinematics::Parameters<double> getOPWKinematicsParamABB()
 }
 
 /** @brief Closed-form OPW solver over the manipulator chain (ABB_BASE_LINK -> ABB_MANIP_TIP_LINK). */
-inline InverseKinematics::UPtr makeOPWInvKinABB(const tesseract::scene_graph::SceneGraph& scene_graph)
+inline InverseKinematics::UPtr makeOPWInvKinABB(const tesseract_scene_graph::SceneGraph& scene_graph)
 {
   auto robot_fwd_kin = std::make_unique<KDLFwdKinChain>(scene_graph, ABB_BASE_LINK, ABB_MANIP_TIP_LINK);
   return std::make_unique<OPWInvKin>(getOPWKinematicsParamABB(),
-                                     robot_fwd_kin->getBaseLinkId(),
-                                     robot_fwd_kin->getTipLinkIds()[0],
-                                     robot_fwd_kin->getJointIds());
+                                     robot_fwd_kin->getBaseLinkName(),
+                                     robot_fwd_kin->getTipLinkNames()[0],
+                                     robot_fwd_kin->getJointNames());
 }
 
 /** @brief Forward kinematics over the tool positioner chain (ABB_MANIP_TIP_LINK -> ABB_TOOL_TIP_LINK). */
-inline ForwardKinematics::UPtr makeToolFwdKinABB(const tesseract::scene_graph::SceneGraph& scene_graph)
+inline ForwardKinematics::UPtr makeToolFwdKinABB(const tesseract_scene_graph::SceneGraph& scene_graph)
 {
   return std::make_unique<KDLFwdKinChain>(scene_graph, ABB_MANIP_TIP_LINK, ABB_TOOL_TIP_LINK);
 }

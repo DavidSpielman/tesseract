@@ -25,12 +25,12 @@
 #include <cassert>
 #include <cmath>
 #include <limits>
-#include <tesseract/kinematics/rtp_inv_kin.h>
-#include <tesseract/kinematics/utils.h>
-#include <tesseract/kinematics/forward_kinematics.h>
-#include <tesseract/scene_graph/graph.h>
-#include <tesseract/scene_graph/joint.h>
-#include <tesseract/scene_graph/scene_state.h>
+#include <tesseract_kinematics/core/rtp_inv_kin.h>
+#include <tesseract_kinematics/core/utils.h>
+#include <tesseract_kinematics/core/forward_kinematics.h>
+#include <tesseract_scene_graph/graph.h>
+#include <tesseract_scene_graph/joint.h>
+#include <tesseract_scene_graph/scene_state.h>
 
 namespace
 {
@@ -39,23 +39,23 @@ namespace
  * @details ShortestPath::active_joints omits FLOATING joints, but a floating joint's transform can
  *          still change, so rigidity has to be judged from the joint types.
  */
-std::optional<tesseract::common::JointId> firstNonFixedJoint(const tesseract::scene_graph::SceneGraph& scene_graph,
-                                                             const tesseract::scene_graph::ShortestPath& path)
+std::optional<std::string> firstNonFixedJoint(const tesseract_scene_graph::SceneGraph& scene_graph,
+                                                             const tesseract_scene_graph::ShortestPath& path)
 {
   for (const auto& joint_id : path.joints)
   {
     const auto joint = scene_graph.getJoint(joint_id);
-    if (joint == nullptr || joint->type != tesseract::scene_graph::JointType::FIXED)
+    if (joint == nullptr || joint->type != tesseract_scene_graph::JointType::FIXED)
       return joint_id;
   }
   return std::nullopt;
 }
 }  // namespace
 
-namespace tesseract::kinematics
+namespace tesseract_kinematics
 {
-RTPInvKin::RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
-                     const tesseract::scene_graph::SceneState& scene_state,
+RTPInvKin::RTPInvKin(const tesseract_scene_graph::SceneGraph& scene_graph,
+                     const tesseract_scene_graph::SceneState& scene_state,
                      InverseKinematics::UPtr manipulator,
                      double manipulator_reach,
                      std::unique_ptr<ForwardKinematics> tool_positioner,
@@ -72,8 +72,8 @@ RTPInvKin::RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
        std::move(solver_name));
 }
 
-RTPInvKin::RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
-                     const tesseract::scene_graph::SceneState& scene_state,
+RTPInvKin::RTPInvKin(const tesseract_scene_graph::SceneGraph& scene_graph,
+                     const tesseract_scene_graph::SceneState& scene_state,
                      InverseKinematics::UPtr manipulator,
                      double manipulator_reach,
                      std::unique_ptr<ForwardKinematics> tool_positioner,
@@ -91,8 +91,8 @@ RTPInvKin::RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
        std::move(solver_name));
 }
 
-RTPInvKin::RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
-                     const tesseract::scene_graph::SceneState& scene_state,
+RTPInvKin::RTPInvKin(const tesseract_scene_graph::SceneGraph& scene_graph,
+                     const tesseract_scene_graph::SceneState& scene_state,
                      InverseKinematics::UPtr manipulator,
                      std::unique_ptr<ForwardKinematics> tool_positioner,
                      const Eigen::VectorXd& tool_sample_resolution,
@@ -108,8 +108,8 @@ RTPInvKin::RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
        std::move(solver_name));
 }
 
-RTPInvKin::RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
-                     const tesseract::scene_graph::SceneState& scene_state,
+RTPInvKin::RTPInvKin(const tesseract_scene_graph::SceneGraph& scene_graph,
+                     const tesseract_scene_graph::SceneState& scene_state,
                      InverseKinematics::UPtr manipulator,
                      std::unique_ptr<ForwardKinematics> tool_positioner,
                      const Eigen::MatrixX2d& tool_sample_range,
@@ -126,8 +126,8 @@ RTPInvKin::RTPInvKin(const tesseract::scene_graph::SceneGraph& scene_graph,
        std::move(solver_name));
 }
 
-void RTPInvKin::init(const tesseract::scene_graph::SceneGraph& scene_graph,
-                     const tesseract::scene_graph::SceneState& scene_state,
+void RTPInvKin::init(const tesseract_scene_graph::SceneGraph& scene_graph,
+                     const tesseract_scene_graph::SceneState& scene_state,
                      InverseKinematics::UPtr manipulator,
                      std::optional<double> manipulator_reach,
                      std::unique_ptr<ForwardKinematics> tool_positioner,
@@ -154,26 +154,26 @@ void RTPInvKin::init(const tesseract::scene_graph::SceneGraph& scene_graph,
   if (!scene_graph.getLink(scene_graph.getRoot()))
     throw std::runtime_error("The scene graph has an invalid root.");
 
-  const std::vector<tesseract::common::LinkId> manip_tips = manipulator->getTipLinkIds();
+  const std::vector<std::string> manip_tips = manipulator->getTipLinkNames();
   if (manip_tips.size() != 1)
     throw std::runtime_error("RTPInvKin requires a manipulator with exactly one tip link");
 
   // The tool tip is the frame every target pose is interpreted in, so picking one of several
   // would silently change the meaning of the query.
-  const std::vector<tesseract::common::LinkId> tool_tips = tool_positioner->getTipLinkIds();
+  const std::vector<std::string> tool_tips = tool_positioner->getTipLinkNames();
   if (tool_tips.size() != 1)
     throw std::runtime_error("RTPInvKin requires a tool positioner with exactly one tip link");
 
-  const tesseract::common::LinkId& manip_tip = manip_tips[0];
-  const tesseract::common::LinkId& tool_tip = tool_tips[0];
-  const tesseract::common::LinkId tool_base = tool_positioner->getBaseLinkId();
+  const std::string& manip_tip = manip_tips[0];
+  const std::string& tool_tip = tool_tips[0];
+  const std::string tool_base = tool_positioner->getBaseLinkName();
 
   // The graph and the state are independent parameters, so a state predating the tool chain has
   // these links in the graph but not in the transform map. Checked here so the static offset below
   // reports a runtime_error rather than letting map::at throw out_of_range.
-  const auto require_in_state = [&scene_state](const tesseract::common::LinkId& link_id) {
+  const auto require_in_state = [&scene_state](const std::string& link_id) {
     if (scene_state.link_transforms.find(link_id) == scene_state.link_transforms.end())
-      throw std::runtime_error("Link '" + link_id.name() + "' is not present in the provided scene state");
+      throw std::runtime_error("Link '" + link_id + "' is not present in the provided scene state");
   };
   require_in_state(manip_tip);
   require_in_state(tool_base);
@@ -184,8 +184,8 @@ void RTPInvKin::init(const tesseract::scene_graph::SceneGraph& scene_graph,
   // Targets arrive in the manipulator's working frame, but reach is measured from its base link.
   // The filter needs the base origin fixed in that frame, so it is disabled when a movable joint
   // separates the two (e.g. a manipulator that itself rides on a positioner).
-  const tesseract::common::LinkId manip_base = manipulator->getBaseLinkId();
-  const tesseract::common::LinkId working_frame = manipulator->getWorkingFrame();
+  const std::string manip_base = manipulator->getBaseLinkName();
+  const std::string working_frame = manipulator->getWorkingFrame();
   std::optional<Eigen::Vector3d> reach_center;
   if (working_frame == manip_base)
   {
@@ -214,7 +214,7 @@ void RTPInvKin::init(const tesseract::scene_graph::SceneGraph& scene_graph,
   }
 
   const Eigen::Index tool_dof = tool_positioner->numJoints();
-  const std::vector<tesseract::common::JointId> tool_joints = tool_positioner->getJointIds();
+  const std::vector<std::string> tool_joints = tool_positioner->getJointNames();
 
   if (tool_sample_resolution.size() != tool_dof)
     throw std::runtime_error("Tool sample resolution must be same size as tool positioner number of joints");
@@ -237,8 +237,8 @@ void RTPInvKin::init(const tesseract::scene_graph::SceneGraph& scene_graph,
   for (std::size_t d = 0; d < dof_range.size() && d < tool_joints.size(); ++d)
   {
     const auto joint = scene_graph.getJoint(tool_joints[d]);
-    if (joint == nullptr || (joint->type != tesseract::scene_graph::JointType::REVOLUTE &&
-                             joint->type != tesseract::scene_graph::JointType::CONTINUOUS))
+    if (joint == nullptr || (joint->type != tesseract_scene_graph::JointType::REVOLUTE &&
+                             joint->type != tesseract_scene_graph::JointType::CONTINUOUS))
       continue;
 
     Eigen::VectorXd& samples = dof_range[d];
@@ -255,15 +255,15 @@ void RTPInvKin::init(const tesseract::scene_graph::SceneGraph& scene_graph,
   if (manip_tip != tool_base)
   {
     if (scene_graph.getLink(tool_base) == nullptr)
-      throw std::runtime_error("Tool positioner base link '" + tool_base.name() + "' not found in scene graph");
+      throw std::runtime_error("Tool positioner base link '" + tool_base + "' not found in scene graph");
     const auto path = scene_graph.getShortestPath(manip_tip, tool_base);
     if (path.links.size() < 2)
-      throw std::runtime_error("Tool positioner base link '" + tool_base.name() +
-                               "' is not connected to manipulator tip link '" + manip_tip.name() + "'");
+      throw std::runtime_error("Tool positioner base link '" + tool_base +
+                               "' is not connected to manipulator tip link '" + manip_tip + "'");
     if (const auto movable = firstNonFixedJoint(scene_graph, path))
-      throw std::runtime_error("Tool positioner base link '" + tool_base.name() +
-                               "' must be rigidly attached to manipulator tip link '" + manip_tip.name() +
-                               "'; found non-fixed joint '" + movable->name() + "' on path");
+      throw std::runtime_error("Tool positioner base link '" + tool_base +
+                               "' must be rigidly attached to manipulator tip link '" + manip_tip +
+                               "'; found non-fixed joint '" + movable.value() + "' on path");
   }
 
   std::size_t grid_size = 1;
@@ -289,7 +289,7 @@ void RTPInvKin::init(const tesseract::scene_graph::SceneGraph& scene_graph,
   tool_samples_.resize(tool_dof, static_cast<Eigen::Index>(grid_size));
   sample_to_manip_tip_.resize(grid_size);
 
-  tesseract::common::LinkIdTransformMap tool_poses;
+  tesseract_common::TransformMap tool_poses;
   std::vector<Eigen::Index> sample_index(static_cast<std::size_t>(tool_dof), 0);
   Eigen::VectorXd tool_pose(tool_dof);
   for (Eigen::Index d = 0; d < tool_dof; ++d)
@@ -302,7 +302,7 @@ void RTPInvKin::init(const tesseract::scene_graph::SceneGraph& scene_graph,
 
     const auto tool_tip_pose = tool_poses.find(tool_tip);
     if (tool_tip_pose == tool_poses.end())
-      throw std::runtime_error("Tool positioner forward kinematics did not return tip link '" + tool_tip.name() + "'");
+      throw std::runtime_error("Tool positioner forward kinematics did not return tip link '" + tool_tip + "'");
 
     tool_samples_.col(static_cast<Eigen::Index>(k)) = tool_pose;
     sample_to_manip_tip_[k] = (manip_tip_to_tool_base * tool_tip_pose->second).inverse();
@@ -327,7 +327,7 @@ void RTPInvKin::init(const tesseract::scene_graph::SceneGraph& scene_graph,
   dof_ = manipulator->numJoints() + tool_dof;
 
   // Joint order: manipulator first, tool second.
-  joint_ids_ = manipulator->getJointIds();
+  joint_ids_ = manipulator->getJointNames();
   joint_ids_.insert(joint_ids_.end(), tool_joints.begin(), tool_joints.end());
 
   manip_inv_kin_ = std::move(manipulator);
@@ -358,7 +358,7 @@ RTPInvKin& RTPInvKin::operator=(const RTPInvKin& other)
 }
 
 void RTPInvKin::calcInvKin(IKSolutions& solutions,
-                           const tesseract::common::LinkIdTransformMap& tip_link_poses,
+                           const tesseract_common::TransformMap& tip_link_poses,
                            const Eigen::Ref<const Eigen::VectorXd>& seed) const
 {
   assert(tip_link_poses.find(tool_tip_link_) != tip_link_poses.end());                      // NOLINT
@@ -371,7 +371,7 @@ void RTPInvKin::calcInvKin(IKSolutions& solutions,
   const double manip_reach_sq = manip_reach_ * manip_reach_;
 
   // Keyed once - the inner solver is handed the same map every sample, with only the value updated.
-  tesseract::common::LinkIdTransformMap manip_target_poses;
+  tesseract_common::TransformMap manip_target_poses;
   Eigen::Isometry3d& manip_target = manip_target_poses[manip_tip_link_];
   const Eigen::Ref<const Eigen::VectorXd> manip_seed = seed.head(manip_dof);
 
@@ -401,16 +401,16 @@ void RTPInvKin::calcInvKin(IKSolutions& solutions,
   }
 }
 
-std::vector<tesseract::common::JointId> RTPInvKin::getJointIds() const { return joint_ids_; }
+std::vector<std::string> RTPInvKin::getJointNames() const { return joint_ids_; }
 
 Eigen::Index RTPInvKin::numJoints() const { return dof_; }
 
-tesseract::common::LinkId RTPInvKin::getBaseLinkId() const { return manip_inv_kin_->getBaseLinkId(); }
+std::string RTPInvKin::getBaseLinkName() const { return manip_inv_kin_->getBaseLinkName(); }
 
-tesseract::common::LinkId RTPInvKin::getWorkingFrame() const { return manip_inv_kin_->getWorkingFrame(); }
+std::string RTPInvKin::getWorkingFrame() const { return manip_inv_kin_->getWorkingFrame(); }
 
-std::vector<tesseract::common::LinkId> RTPInvKin::getTipLinkIds() const { return { tool_tip_link_ }; }
+std::vector<std::string> RTPInvKin::getTipLinkNames() const { return { tool_tip_link_ }; }
 
 std::string RTPInvKin::getSolverName() const { return solver_name_; }
 
-}  // namespace tesseract::kinematics
+}  // namespace tesseract_kinematics

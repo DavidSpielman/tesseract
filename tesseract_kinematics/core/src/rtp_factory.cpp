@@ -21,89 +21,118 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <tesseract/kinematics/rtp_factory.h>
-#include <tesseract/kinematics/rtp_inv_kin.h>
-#include <tesseract/kinematics/forward_kinematics.h>
-#include <tesseract/kinematics/factory_utils.h>
-#include <tesseract/scene_graph/graph.h>
-#include <tesseract/scene_graph/joint.h>
+#include <tesseract_kinematics/core/rtp_factory.h>
+#include <tesseract_kinematics/core/rtp_inv_kin.h>
+#include <tesseract_kinematics/core/forward_kinematics.h>
+#include <tesseract_kinematics/core/factory_utils.h>
+#include <tesseract_scene_graph/graph.h>
+#include <tesseract_scene_graph/joint.h>
+#include <tesseract_common/yaml_extensions.h>
 
-#include <tesseract/common/property_tree.h>
-#include <tesseract/common/schema_registration.h>
-#include <tesseract/common/yaml_extensions.h>
+#include <console_bridge/console.h>
 
-namespace
+namespace tesseract_kinematics
 {
-tesseract::common::PropertyTree rtpInvKinFactorySchema()
-{
-  using namespace tesseract::common;
 
-  static const std::string kItemType = "tesseract::kinematics::PositionerSampleResolution";
-
-  // manipulator_reach is deliberately not required: when absent it is derived from the manipulator
-  // chain's reach upper bound, which is what RTPInvKin's shorter constructor does.
-  // clang-format off
-  return PropertyTreeBuilder()
-    .attribute(property_attribute::TYPE, property_type::CONTAINER)
-    .float64("manipulator_reach").done()
-    .customType("tool_sample_resolution",
-          property_type::createList(kItemType)).required().done()
-    .customType("tool_positioner", "tesseract::kinematics::FwdKinFactory")
-      .required().acceptsDerivedTypes().done()
-    .customType("manipulator", "tesseract::kinematics::InvKinFactory")
-      .required().acceptsDerivedTypes().done()
-    .build();
-  // clang-format on
-}
-}  // namespace
-
-namespace tesseract::kinematics
-{
-tesseract::common::PropertyTree RTPInvKinFactory::schema() const { return rtpInvKinFactorySchema(); }
-
-std::unique_ptr<InverseKinematics> RTPInvKinFactory::createImpl(const std::string& solver_name,
-                                                                const tesseract::scene_graph::SceneGraph& scene_graph,
-                                                                const tesseract::scene_graph::SceneState& scene_state,
+std::unique_ptr<InverseKinematics> RTPInvKinFactory::create(const std::string& solver_name,
+                                                                const tesseract_scene_graph::SceneGraph& scene_graph,
+                                                                const tesseract_scene_graph::SceneState& scene_state,
                                                                 const KinematicsPluginFactory& plugin_factory,
-                                                                const tesseract::common::PropertyTree& config) const
+                                                                const YAML::Node& config) const
 {
-  const auto sample_res_map =
-      parseSampleResolutionMap(config.at("tool_sample_resolution").getValue(), scene_graph, "tool_sample_resolution");
+  ForwardKinematics::UPtr fwd_kin;
+  InverseKinematics::UPtr inv_kin;
+  double m_reach{ 0 };
+  std::map<std::string, JointSampleSpec> sample_res_map;
+  SampleGridConfig grid;
 
-  const auto p_info = config.at("tool_positioner").as<tesseract::common::PluginInfo>();
-  ForwardKinematics::UPtr fwd_kin = plugin_factory.createFwdKin(p_info.class_name, p_info, scene_graph, scene_state);
-  if (fwd_kin == nullptr)
-    throw std::runtime_error("RTPInvKinFactory, failed to create tool forward kinematics!");
-
-  const SampleGridConfig grid = toSampleGridConfig(sample_res_map, fwd_kin->getJointIds(), "tool_sample_resolution");
-
-  const auto m_info = config.at("manipulator").as<tesseract::common::PluginInfo>();
-  InverseKinematics::UPtr inv_kin = plugin_factory.createInvKin(m_info.class_name, m_info, scene_graph, scene_state);
-  if (inv_kin == nullptr)
-    throw std::runtime_error("RTPInvKinFactory, failed to create manipulator inverse kinematics!");
-
-  // An absent manipulator_reach selects the constructor that derives the reach from the
-  // manipulator chain instead.
-  if (const auto* reach = config.find("manipulator_reach"); reach != nullptr && !reach->isNull())
+  try
   {
+
+    // Get tool sample resolution
+    std::map<std::string, JointSampleSpec> sample_res_map;
+    if (YAML::Node sample_res_node = config["tool_sample_resolution"])
+    {
+      sample_res_map =
+          parseSampleResolutionMap(sample_res_node, scene_graph, "tool_sample_resolution");
+    }
+    else
+    {
+      throw std::runtime_error("RTPInvKinFactory, missing 'tool_sample_resolution' entry!");
+    }
+
+    // Get Tool Positioner
+    if (YAML::Node positioner = config["tool_positioner"])
+    {
+      tesseract_common::PluginInfo p_info;
+      if (YAML::Node n = positioner["class"])
+        p_info.class_name = n.as<std::string>();
+      else
+        throw std::runtime_error("RTPInvKinFactory, 'tool_positioner' missing 'class' entry!");
+
+      if (YAML::Node n = positioner["config"])
+        p_info.config = n;
+
+      fwd_kin = plugin_factory.createFwdKin(p_info.class_name, p_info, scene_graph, scene_state);
+      if (fwd_kin == nullptr)
+        throw std::runtime_error("RTPInvKinFactory, failed to create tool_positioner forward kinematics!");
+
+      grid = toSampleGridConfig(sample_res_map, fwd_kin->getJointNames(), "tool_sample_resolution");
+    }
+    else
+    {
+      throw std::runtime_error("RTPInvKinFactory, missing 'tool_positioner' entry!");
+    }
+
+    // Get Manipulator
+    if (YAML::Node manipulator = config["manipulator"])
+    {
+      tesseract_common::PluginInfo m_info;
+      if (YAML::Node n = manipulator["class"])
+        m_info.class_name = n.as<std::string>();
+      else
+        throw std::runtime_error("RTPInvKinFactory, 'manipulator' missing 'class' entry!");
+
+      if (YAML::Node n = manipulator["config"])
+        m_info.config = n;
+
+      inv_kin = plugin_factory.createInvKin(m_info.class_name, m_info, scene_graph, scene_state);
+      if (inv_kin == nullptr)
+        throw std::runtime_error("RTPInvKinFactory, failed to create positioner inverse kinematics!");
+    }
+    else
+    {
+      throw std::runtime_error("RTPInvKinFactory, missing 'manipulator' entry!");
+    }
+  }
+  catch (const std::exception& e)
+  {
+    CONSOLE_BRIDGE_logError("RTPInvKinFactory: Failed to parse yaml config data! Details: %s", e.what());
+    return nullptr;
+  }
+
+  // Get Reach
+  if (YAML::Node n = config["manipulator_reach"])
+  {
+    m_reach = n.as<double>();
     return std::make_unique<RTPInvKin>(scene_graph,
                                        scene_state,
                                        std::move(inv_kin),
-                                       reach->as<double>(),
+                                       m_reach,
                                        std::move(fwd_kin),
                                        grid.range,
                                        grid.resolution,
                                        solver_name);
   }
-  return std::make_unique<RTPInvKin>(
-      scene_graph, scene_state, std::move(inv_kin), std::move(fwd_kin), grid.range, grid.resolution, solver_name);
+
+  // An absent manipulator_reach selects the constructor that derives the reach from the
+  // manipulator chain instead.
+  return std::make_unique<RTPInvKin>(scene_graph, scene_state, std::move(inv_kin), std::move(fwd_kin), grid.range, grid.resolution, solver_name);
 }
 
 PLUGIN_ANCHOR_IMPL(RTPInvKinFactoriesAnchor)
 
-}  // namespace tesseract::kinematics
+}  // namespace tesseract_kinematics
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-TESSERACT_ADD_INV_KIN_PLUGIN(tesseract::kinematics::RTPInvKinFactory, RTPInvKinFactory);
-TESSERACT_SCHEMA_REGISTER(RTPInvKinFactory, rtpInvKinFactorySchema);
-TESSERACT_SCHEMA_REGISTER_DERIVED_TYPE(tesseract::kinematics::InvKinFactory, RTPInvKinFactory);
+TESSERACT_ADD_INV_KIN_PLUGIN(tesseract_kinematics::RTPInvKinFactory, RTPInvKinFactory);

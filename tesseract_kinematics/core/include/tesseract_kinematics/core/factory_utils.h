@@ -24,7 +24,7 @@
 #ifndef TESSERACT_KINEMATICS_FACTORY_UTILS_H
 #define TESSERACT_KINEMATICS_FACTORY_UTILS_H
 
-#include <tesseract/common/macros.h>
+#include <tesseract_common/macros.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <map>
 #include <string>
@@ -33,10 +33,10 @@ TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <yaml-cpp/yaml.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
-#include <tesseract/common/types.h>
-#include <tesseract/scene_graph/fwd.h>
+#include <tesseract_common/types.h>
+#include <tesseract_scene_graph/fwd.h>
 
-namespace tesseract::kinematics
+namespace tesseract_kinematics
 {
 /** @brief One joint's sampling discretisation, as parsed from a "*_sample_resolution" entry. */
 struct JointSampleSpec
@@ -62,9 +62,9 @@ struct JointSampleSpec
  *                        whoever catches, so it is not repeated here.
  * @throws std::runtime_error on any of the malformed-input or out-of-range conditions above.
  */
-std::map<tesseract::common::JointId, JointSampleSpec>
+std::map<std::string, JointSampleSpec>
 parseSampleResolutionMap(const YAML::Node& sample_res_node,
-                         const tesseract::scene_graph::SceneGraph& scene_graph,
+                         const tesseract_scene_graph::SceneGraph& scene_graph,
                          const std::string& block_label);
 
 /** @brief A sampled chain's per-joint discretisation, ordered to match that chain's joint order. */
@@ -82,10 +82,10 @@ struct SampleGridConfig
  * @param block_label    Name of the config block, quoted into error messages.
  * @throws std::runtime_error if the map does not describe exactly @p joint_ids.
  */
-SampleGridConfig toSampleGridConfig(const std::map<tesseract::common::JointId, JointSampleSpec>& sample_res_map,
-                                    const std::vector<tesseract::common::JointId>& joint_ids,
+SampleGridConfig toSampleGridConfig(const std::map<std::string, JointSampleSpec>& sample_res_map,
+                                    const std::vector<std::string>& joint_ids,
                                     const std::string& block_label);
 
-}  // namespace tesseract::kinematics
+}  // namespace tesseract_kinematics
 
 #endif  // TESSERACT_KINEMATICS_FACTORY_UTILS_H

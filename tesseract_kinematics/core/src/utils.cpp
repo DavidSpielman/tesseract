@@ -33,8 +33,8 @@ TESSERACT_COMMON_IGNORE_WARNINGS_POP
 #include <tesseract_kinematics/core/joint_group.h>
 #include <tesseract_kinematics/core/forward_kinematics.h>
 #include <cmath>
-#include <tesseract/scene_graph/graph.h>
-#include <tesseract/scene_graph/joint.h>
+#include <tesseract_scene_graph/graph.h>
+#include <tesseract_scene_graph/joint.h>
 
 namespace tesseract_kinematics
 {
@@ -272,15 +272,15 @@ Manipulability calcManipulability(const Eigen::Ref<const Eigen::MatrixXd>& jacob
   return manip;
 }
 
-double computeChainReachUpperBound(const tesseract::scene_graph::SceneGraph& scene_graph,
-                                   const tesseract::common::LinkId& base_link_id,
-                                   const tesseract::common::LinkId& tip_link_id)
+double computeChainReachUpperBound(const tesseract_scene_graph::SceneGraph& scene_graph,
+                                   const std::string& base_link_id,
+                                   const std::string& tip_link_id)
 {
   if (scene_graph.getLink(base_link_id) == nullptr)
-    throw std::runtime_error("computeChainReachUpperBound: base link '" + base_link_id.name() +
+    throw std::runtime_error("computeChainReachUpperBound: base link '" + base_link_id +
                              "' not found in scene graph");
   if (scene_graph.getLink(tip_link_id) == nullptr)
-    throw std::runtime_error("computeChainReachUpperBound: tip link '" + tip_link_id.name() +
+    throw std::runtime_error("computeChainReachUpperBound: tip link '" + tip_link_id +
                              "' not found in scene graph");
 
   if (base_link_id == tip_link_id)
@@ -288,54 +288,54 @@ double computeChainReachUpperBound(const tesseract::scene_graph::SceneGraph& sce
 
   const auto path = scene_graph.getShortestPath(base_link_id, tip_link_id);
   if (path.joints.empty())
-    throw std::runtime_error("computeChainReachUpperBound: no path from '" + base_link_id.name() + "' to '" +
-                             tip_link_id.name() + "'");
+    throw std::runtime_error("computeChainReachUpperBound: no path from '" + base_link_id + "' to '" +
+                             tip_link_id + "'");
 
   double bound = 0.0;
   for (const auto& joint_id : path.joints)
   {
     const auto joint = scene_graph.getJoint(joint_id);
     if (joint == nullptr)
-      throw std::runtime_error("computeChainReachUpperBound: joint '" + joint_id.name() + "' missing from scene graph");
+      throw std::runtime_error("computeChainReachUpperBound: joint '" + joint_id + "' missing from scene graph");
 
     bound += joint->parent_to_joint_origin_transform.translation().norm();
 
     switch (joint->type)
     {
-      case tesseract::scene_graph::JointType::REVOLUTE:
-      case tesseract::scene_graph::JointType::CONTINUOUS:
-      case tesseract::scene_graph::JointType::FIXED:
+      case tesseract_scene_graph::JointType::REVOLUTE:
+      case tesseract_scene_graph::JointType::CONTINUOUS:
+      case tesseract_scene_graph::JointType::FIXED:
         break;  // No additional linear contribution.
-      case tesseract::scene_graph::JointType::PRISMATIC:
+      case tesseract_scene_graph::JointType::PRISMATIC:
       {
         // Mimic prismatics follow another joint: own `limits` are typically unset, so the
         // max-extension formula would silently under-count. Refuse rather than produce a bound
         // that can be violated.
         if (joint->mimic != nullptr)
-          throw std::runtime_error("computeChainReachUpperBound: prismatic joint '" + joint_id.name() +
+          throw std::runtime_error("computeChainReachUpperBound: prismatic joint '" + joint_id +
                                    "' is a mimic joint (unsupported)");
         if (joint->limits == nullptr)
-          throw std::runtime_error("computeChainReachUpperBound: prismatic joint '" + joint_id.name() +
+          throw std::runtime_error("computeChainReachUpperBound: prismatic joint '" + joint_id +
                                    "' has no limits");
         if (!std::isfinite(joint->limits->lower) || !std::isfinite(joint->limits->upper))
-          throw std::runtime_error("computeChainReachUpperBound: prismatic joint '" + joint_id.name() +
+          throw std::runtime_error("computeChainReachUpperBound: prismatic joint '" + joint_id +
                                    "' has non-finite limits");
         bound += std::max(std::abs(joint->limits->lower), std::abs(joint->limits->upper));
         break;
       }
-      case tesseract::scene_graph::JointType::FLOATING:
-      case tesseract::scene_graph::JointType::PLANAR:
-      case tesseract::scene_graph::JointType::UNKNOWN:
+      case tesseract_scene_graph::JointType::FLOATING:
+      case tesseract_scene_graph::JointType::PLANAR:
+      case tesseract_scene_graph::JointType::UNKNOWN:
       default:
-        throw std::runtime_error("computeChainReachUpperBound: joint '" + joint_id.name() +
+        throw std::runtime_error("computeChainReachUpperBound: joint '" + joint_id +
                                  "' has unsupported type for reach derivation");
     }
   }
   return bound;
 }
 
-Eigen::MatrixX2d gatherJointLimits(const tesseract::scene_graph::SceneGraph& scene_graph,
-                                   const std::vector<tesseract::common::JointId>& joint_ids)
+Eigen::MatrixX2d gatherJointLimits(const tesseract_scene_graph::SceneGraph& scene_graph,
+                                   const std::vector<std::string>& joint_ids)
 {
   const auto n = static_cast<Eigen::Index>(joint_ids.size());
   Eigen::MatrixX2d limits(n, 2);
@@ -344,15 +344,15 @@ Eigen::MatrixX2d gatherJointLimits(const tesseract::scene_graph::SceneGraph& sce
     const auto& id = joint_ids[static_cast<std::size_t>(i)];
     auto joint = scene_graph.getJoint(id);
     if (joint == nullptr)
-      throw std::runtime_error("gatherJointLimits: joint '" + id.name() + "' not found in scene graph");
-    if (joint->type == tesseract::scene_graph::JointType::CONTINUOUS)
+      throw std::runtime_error("gatherJointLimits: joint '" + id + "' not found in scene graph");
+    if (joint->type == tesseract_scene_graph::JointType::CONTINUOUS)
     {
       limits(i, 0) = -M_PI;
       limits(i, 1) = M_PI;
       continue;
     }
     if (joint->limits == nullptr)
-      throw std::runtime_error("gatherJointLimits: joint '" + id.name() + "' has no limits");
+      throw std::runtime_error("gatherJointLimits: joint '" + id + "' has no limits");
     limits(i, 0) = joint->limits->lower;
     limits(i, 1) = joint->limits->upper;
   }

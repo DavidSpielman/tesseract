@@ -87,9 +87,9 @@ inline tesseract_scene_graph::SceneGraph::UPtr getSceneGraphABB(const tesseract_
  *          variant should copy this and assign the fields they care about by name, rather than
  *          reintroducing a positional parameter list.
  */
-inline tesseract::scene_graph::JointLimits defaultTestJointLimits()
+inline tesseract_scene_graph::JointLimits defaultTestJointLimits()
 {
-  tesseract::scene_graph::JointLimits limits;
+  tesseract_scene_graph::JointLimits limits;
   limits.lower = -M_PI;
   limits.upper = M_PI;
   limits.effort = 1.0;
@@ -112,27 +112,27 @@ inline tesseract::scene_graph::JointLimits defaultTestJointLimits()
  * @param offset Transform from parent joint origin to child (default: Identity).
  * @param limits Joint limits (default: defaultTestJointLimits()).
  */
-inline void addRevoluteChild(tesseract::scene_graph::SceneGraph& sg,
-                             const tesseract::common::JointId& id,
-                             const tesseract::common::LinkId& parent,
-                             const tesseract::common::LinkId& child,
+inline void addRevoluteChild(tesseract_scene_graph::SceneGraph& sg,
+                             const std::string& id,
+                             const std::string& parent,
+                             const std::string& child,
                              const Eigen::Vector3d& axis,
                              const Eigen::Isometry3d& offset = Eigen::Isometry3d::Identity(),
-                             const tesseract::scene_graph::JointLimits& limits = defaultTestJointLimits())
+                             const tesseract_scene_graph::JointLimits& limits = defaultTestJointLimits())
 {
-  sg.addLink(tesseract::scene_graph::Link(child));
-  tesseract::scene_graph::Joint j(id);
-  j.parent_link_id = parent;
-  j.child_link_id = child;
-  j.type = tesseract::scene_graph::JointType::REVOLUTE;
+  sg.addLink(tesseract_scene_graph::Link(child));
+  tesseract_scene_graph::Joint j(id);
+  j.parent_link_name = parent;
+  j.child_link_name = child;
+  j.type = tesseract_scene_graph::JointType::REVOLUTE;
   j.axis = axis;
   j.parent_to_joint_origin_transform = offset;
-  j.limits = std::make_shared<tesseract::scene_graph::JointLimits>(limits);
+  j.limits = std::make_shared<tesseract_scene_graph::JointLimits>(limits);
   sg.addJoint(j);
 }
 
-inline tesseract::scene_graph::SceneGraph::UPtr
-getSceneGraphABBWithToolPositioner(const tesseract::common::ResourceLocator& locator)
+inline tesseract_scene_graph::SceneGraph::UPtr
+getSceneGraphABBWithToolPositioner(const tesseract_common::ResourceLocator& locator)
 {
   auto sg = getSceneGraphABB(locator);
 
@@ -150,8 +150,8 @@ getSceneGraphABBWithToolPositioner(const tesseract::common::ResourceLocator& loc
   return sg;
 }
 
-inline tesseract::scene_graph::SceneGraph::UPtr
-getSceneGraphABBWithActiveJointBeforeToolPositioner(const tesseract::common::ResourceLocator& locator)
+inline tesseract_scene_graph::SceneGraph::UPtr
+getSceneGraphABBWithActiveJointBeforeToolPositioner(const tesseract_common::ResourceLocator& locator)
 {
   auto sg = getSceneGraphABB(locator);
 
@@ -167,8 +167,8 @@ getSceneGraphABBWithActiveJointBeforeToolPositioner(const tesseract::common::Res
   return sg;
 }
 
-inline tesseract::scene_graph::SceneGraph::UPtr
-getSceneGraphABBWithMultiJointToolPositioner(const tesseract::common::ResourceLocator& locator)
+inline tesseract_scene_graph::SceneGraph::UPtr
+getSceneGraphABBWithMultiJointToolPositioner(const tesseract_common::ResourceLocator& locator)
 {
   auto sg = getSceneGraphABB(locator);
 
@@ -186,7 +186,7 @@ getSceneGraphABBWithMultiJointToolPositioner(const tesseract::common::ResourceLo
   return sg;
 }
 
-inline tesseract::scene_graph::SceneGraph::UPtr getSceneGraphIIWA7(const tesseract::common::ResourceLocator& locator)
+inline tesseract_scene_graph::SceneGraph::UPtr getSceneGraphIIWA7(const tesseract_common::ResourceLocator& locator)
 {
   std::string path = locator.locateResource("package://tesseract_support/urdf/iiwa7.urdf")->getFilePath();
   return tesseract_urdf::parseURDFFile(path, locator);

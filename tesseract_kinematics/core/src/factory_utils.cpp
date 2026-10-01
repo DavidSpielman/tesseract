@@ -22,42 +22,42 @@
  * limitations under the License.
  */
 
-#include <tesseract/kinematics/factory_utils.h>
-#include <tesseract/kinematics/yaml_extensions.h>
-#include <tesseract/common/utils.h>
-#include <tesseract/scene_graph/graph.h>
-#include <tesseract/scene_graph/joint.h>
+#include <tesseract_kinematics/core/factory_utils.h>
+#include <tesseract_kinematics/core/yaml_extensions.h>
+#include <tesseract_common/utils.h>
+#include <tesseract_scene_graph/graph.h>
+#include <tesseract_scene_graph/joint.h>
 
 #include <cmath>
 #include <map>
 
-namespace tesseract::kinematics
+namespace tesseract_kinematics
 {
-std::map<tesseract::common::JointId, JointSampleSpec>
+std::map<std::string, JointSampleSpec>
 parseSampleResolutionMap(const YAML::Node& sample_res_node,
-                         const tesseract::scene_graph::SceneGraph& scene_graph,
+                         const tesseract_scene_graph::SceneGraph& scene_graph,
                          const std::string& block_label)
 {
-  std::map<tesseract::common::JointId, JointSampleSpec> sample_res_map;
+  std::map<std::string, JointSampleSpec> sample_res_map;
 
   for (const auto& entry : sample_res_node)
   {
     const auto psr = entry.as<PositionerSampleResolution>();
-    const tesseract::common::JointId joint_id(psr.name);
-    const std::string& jn = joint_id.name();
+    const std::string joint_id(psr.name);
+    const std::string& jn = joint_id;
 
     auto jnt = scene_graph.getJoint(joint_id);
     if (jnt == nullptr)
-      throw std::runtime_error(tesseract::common::strFormat(
+      throw std::runtime_error(tesseract_common::strFormat(
           "'%s' failed to find joint '%s' in scene graph!", block_label.c_str(), jn.c_str()));
 
     // A continuous joint is unbounded: default to one full turn and accept any explicit range.
-    if (jnt->type == tesseract::scene_graph::JointType::CONTINUOUS)
+    if (jnt->type == tesseract_scene_graph::JointType::CONTINUOUS)
     {
       const double range_min = psr.min.value_or(-M_PI);
       const double range_max = psr.max.value_or(M_PI);
       if (range_min > range_max)
-        throw std::runtime_error(tesseract::common::strFormat(
+        throw std::runtime_error(tesseract_common::strFormat(
             "'%s' joint '%s' sample range is not valid!", block_label.c_str(), jn.c_str()));
       sample_res_map.insert_or_assign(joint_id, JointSampleSpec{ psr.value, range_min, range_max });
       continue;
@@ -65,20 +65,20 @@ parseSampleResolutionMap(const YAML::Node& sample_res_node,
 
     if (jnt->limits == nullptr)
       throw std::runtime_error(
-          tesseract::common::strFormat("'%s' joint '%s' has no limits!", block_label.c_str(), jn.c_str()));
+          tesseract_common::strFormat("'%s' joint '%s' has no limits!", block_label.c_str(), jn.c_str()));
 
     const double range_min = psr.min.value_or(jnt->limits->lower);
     const double range_max = psr.max.value_or(jnt->limits->upper);
 
     if (range_min < jnt->limits->lower)
-      throw std::runtime_error(tesseract::common::strFormat(
+      throw std::runtime_error(tesseract_common::strFormat(
           "'%s' joint '%s' sample range minimum is less than joint minimum!", block_label.c_str(), jn.c_str()));
     if (range_max > jnt->limits->upper)
-      throw std::runtime_error(tesseract::common::strFormat(
+      throw std::runtime_error(tesseract_common::strFormat(
           "'%s' joint '%s' sample range maximum is greater than joint maximum!", block_label.c_str(), jn.c_str()));
     if (range_min > range_max)
       throw std::runtime_error(
-          tesseract::common::strFormat("'%s' joint '%s' sample range is not valid!", block_label.c_str(), jn.c_str()));
+          tesseract_common::strFormat("'%s' joint '%s' sample range is not valid!", block_label.c_str(), jn.c_str()));
 
     sample_res_map.insert_or_assign(joint_id, JointSampleSpec{ psr.value, range_min, range_max });
   }
@@ -86,12 +86,12 @@ parseSampleResolutionMap(const YAML::Node& sample_res_node,
   return sample_res_map;
 }
 
-SampleGridConfig toSampleGridConfig(const std::map<tesseract::common::JointId, JointSampleSpec>& sample_res_map,
-                                    const std::vector<tesseract::common::JointId>& joint_ids,
+SampleGridConfig toSampleGridConfig(const std::map<std::string, JointSampleSpec>& sample_res_map,
+                                    const std::vector<std::string>& joint_ids,
                                     const std::string& block_label)
 {
   if (sample_res_map.size() != joint_ids.size())
-    throw std::runtime_error(tesseract::common::strFormat("'%s' has incorrect number of joints!", block_label.c_str()));
+    throw std::runtime_error(tesseract_common::strFormat("'%s' has incorrect number of joints!", block_label.c_str()));
 
   const auto n = static_cast<Eigen::Index>(joint_ids.size());
   SampleGridConfig out;
@@ -103,7 +103,7 @@ SampleGridConfig toSampleGridConfig(const std::map<tesseract::common::JointId, J
     auto it = sample_res_map.find(jn);
     if (it == sample_res_map.end())
       throw std::runtime_error(
-          tesseract::common::strFormat("'%s' missing joint '%s'!", block_label.c_str(), jn.name().c_str()));
+          tesseract_common::strFormat("'%s' missing joint '%s'!", block_label.c_str(), jn.c_str()));
 
     out.resolution(i) = it->second.resolution;
     out.range(i, 0) = it->second.min;
@@ -113,4 +113,4 @@ SampleGridConfig toSampleGridConfig(const std::map<tesseract::common::JointId, J
   return out;
 }
 
-}  // namespace tesseract::kinematics
+}  // namespace tesseract_kinematics

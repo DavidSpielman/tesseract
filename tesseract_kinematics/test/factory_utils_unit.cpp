@@ -8,7 +8,7 @@
  * helpers directly against a two-link scene graph.
  */
 
-#include <tesseract/common/macros.h>
+#include <tesseract_common/macros.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <gtest/gtest.h>
 #include <cmath>
@@ -16,29 +16,29 @@ TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <yaml-cpp/yaml.h>
 TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
-#include <tesseract/kinematics/factory_utils.h>
-#include <tesseract/scene_graph/graph.h>
-#include <tesseract/scene_graph/joint.h>
-#include <tesseract/scene_graph/link.h>
+#include <tesseract_kinematics/core/factory_utils.h>
+#include <tesseract_scene_graph/graph.h>
+#include <tesseract_scene_graph/joint.h>
+#include <tesseract_scene_graph/link.h>
 
 namespace
 {
 /** @brief Append a revolute joint @p name limited to [@p lower, @p upper], linking two new links. */
-void addJoint(tesseract::scene_graph::SceneGraph& sg,
+void addJoint(tesseract_scene_graph::SceneGraph& sg,
               const std::string& name,
               const std::string& parent,
               const std::string& child,
               double lower,
               double upper)
 {
-  sg.addLink(tesseract::scene_graph::Link(child));
+  sg.addLink(tesseract_scene_graph::Link(child));
 
-  tesseract::scene_graph::Joint j(name);
-  j.parent_link_id = parent;
-  j.child_link_id = child;
-  j.type = tesseract::scene_graph::JointType::REVOLUTE;
+  tesseract_scene_graph::Joint j(name);
+  j.parent_link_name = parent;
+  j.child_link_name = child;
+  j.type = tesseract_scene_graph::JointType::REVOLUTE;
   j.axis = Eigen::Vector3d::UnitZ();
-  j.limits = std::make_shared<tesseract::scene_graph::JointLimits>();
+  j.limits = std::make_shared<tesseract_scene_graph::JointLimits>();
   j.limits->lower = lower;
   j.limits->upper = upper;
   j.limits->velocity = 1.0;
@@ -48,11 +48,11 @@ void addJoint(tesseract::scene_graph::SceneGraph& sg,
 }
 
 /** @brief Minimal scene graph: base -> j1 -> l1, with j1 limited to [-1, 1]. */
-std::unique_ptr<tesseract::scene_graph::SceneGraph> buildSceneGraph()
+std::unique_ptr<tesseract_scene_graph::SceneGraph> buildSceneGraph()
 {
-  auto sg = std::make_unique<tesseract::scene_graph::SceneGraph>();
+  auto sg = std::make_unique<tesseract_scene_graph::SceneGraph>();
   sg->setName("factory_utils_test");
-  sg->addLink(tesseract::scene_graph::Link("base"));
+  sg->addLink(tesseract_scene_graph::Link("base"));
   sg->setRoot("base");
   addJoint(*sg, "j1", "base", "l1", -1.0, 1.0);
 
@@ -60,15 +60,15 @@ std::unique_ptr<tesseract::scene_graph::SceneGraph> buildSceneGraph()
 }
 
 /** @brief Extends buildSceneGraph() with l1 -> j2 -> l2, where j2 is limited to [-2, 2]. */
-void addSecondJoint(tesseract::scene_graph::SceneGraph& sg) { addJoint(sg, "j2", "l1", "l2", -2.0, 2.0); }
+void addSecondJoint(tesseract_scene_graph::SceneGraph& sg) { addJoint(sg, "j2", "l1", "l2", -2.0, 2.0); }
 
 /** @brief Parse @p yaml against the fixture graph and reorder it onto @p joint_ids. */
-tesseract::kinematics::SampleGridConfig parse(const tesseract::scene_graph::SceneGraph& sg,
+tesseract_kinematics::SampleGridConfig parse(const tesseract_scene_graph::SceneGraph& sg,
                                               const std::string& yaml,
-                                              const std::vector<tesseract::common::JointId>& joint_ids = { "j1" })
+                                              const std::vector<std::string>& joint_ids = { "j1" })
 {
-  const auto map = tesseract::kinematics::parseSampleResolutionMap(YAML::Load(yaml), sg, "sample_resolution");
-  return tesseract::kinematics::toSampleGridConfig(map, joint_ids, "sample_resolution");
+  const auto map = tesseract_kinematics::parseSampleResolutionMap(YAML::Load(yaml), sg, "sample_resolution");
+  return tesseract_kinematics::toSampleGridConfig(map, joint_ids, "sample_resolution");
 }
 }  // namespace
 
@@ -122,15 +122,15 @@ TEST(KinematicsFactoryUtils, SampleResolutionRejectsJointWithoutLimits)  // NOLI
   const auto sg = buildSceneGraph();
   // A joint's limits member is a default-null shared_ptr; reading lower/upper without a
   // guard would dereference null rather than report a configuration error.
-  std::const_pointer_cast<tesseract::scene_graph::Joint>(sg->getJoint("j1"))->limits = nullptr;
+  std::const_pointer_cast<tesseract_scene_graph::Joint>(sg->getJoint("j1"))->limits = nullptr;
   EXPECT_THROW(parse(*sg, "- { name: j1, value: 0.1 }"), std::runtime_error);  // NOLINT
 }
 
 TEST(KinematicsFactoryUtils, SampleResolutionTreatsContinuousJointAsUnbounded)  // NOLINT
 {
   const auto sg = buildSceneGraph();
-  auto j1 = std::const_pointer_cast<tesseract::scene_graph::Joint>(sg->getJoint("j1"));
-  j1->type = tesseract::scene_graph::JointType::CONTINUOUS;
+  auto j1 = std::const_pointer_cast<tesseract_scene_graph::Joint>(sg->getJoint("j1"));
+  j1->type = tesseract_scene_graph::JointType::CONTINUOUS;
   j1->limits->lower = 0.0;
   j1->limits->upper = 0.0;
 

@@ -34,11 +34,13 @@ TESSERACT_COMMON_IGNORE_WARNINGS_PUSH
 #include <vector>
 TESSERACT_COMMON_IGNORE_WARNINGS_POP
 
-#include <tesseract/common/logging.h>
-#include <tesseract/common/utils.h>
-#include <tesseract/common/kinematic_limits.h>
-#include <tesseract/common/types.h>
-#include <tesseract/scene_graph/fwd.h>
+#include <tesseract_common/utils.h>
+#include <tesseract_common/kinematic_limits.h>
+#include <tesseract_common/types.h>
+#include <tesseract_scene_graph/fwd.h>
+
+#include <console_bridge/console.h>
+
 
 namespace tesseract_kinematics
 {
@@ -414,9 +416,9 @@ inline void harmonizeTowardMedian(Eigen::Ref<VectorX<FloatType>> qs,
  *         between them, if any joint along the path is FLOATING / PLANAR (unbounded translation),
  *         or if a PRISMATIC joint along the path is a mimic joint or has no finite limits.
  */
-double computeChainReachUpperBound(const tesseract::scene_graph::SceneGraph& scene_graph,
-                                   const tesseract::common::LinkId& base_link_id,
-                                   const tesseract::common::LinkId& tip_link_id);
+double computeChainReachUpperBound(const tesseract_scene_graph::SceneGraph& scene_graph,
+                                   const std::string& base_link_id,
+                                   const std::string& tip_link_id);
 
 /**
  * @brief Look up each joint in @p scene_graph and return their position limits as a (N,2) matrix.
@@ -426,8 +428,8 @@ double computeChainReachUpperBound(const tesseract::scene_graph::SceneGraph& sce
  * @throws std::runtime_error if any joint id is missing from @p scene_graph or if any matched
  *         non-continuous joint has a null `limits` member.
  */
-Eigen::MatrixX2d gatherJointLimits(const tesseract::scene_graph::SceneGraph& scene_graph,
-                                   const std::vector<tesseract::common::JointId>& joint_ids);
+Eigen::MatrixX2d gatherJointLimits(const tesseract_scene_graph::SceneGraph& scene_graph,
+                                   const std::vector<std::string>& joint_ids);
 
 /**
  * @brief Build a per-joint sample grid by uniformly subdividing each row of @p range using @p resolution.

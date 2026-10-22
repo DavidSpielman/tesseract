@@ -85,7 +85,7 @@ YAML::Node rtpPlugin(YAML::Node& config)
   return config["kinematic_plugins"]["inv_kin_plugins"]["rtp_manipulator"]["plugins"]["RTPInvKin"];
 }
 
-/** @brief That plugin's `config` block - the RTPInvKinFactory schema itself. */
+/** @brief That plugin's `config` block - the RTPInvKinFactory YAML node itself. */
 YAML::Node rtpPluginConfig(YAML::Node& config) { return rtpPlugin(config)["config"]; }
 
 /** @brief Minimal stub IK exposing two tip link names — used to verify RTP rejects multi-tip manipulators. */
@@ -709,14 +709,8 @@ TEST(TesseractKinematicsUnit, RTPInvKinFactoryFailureMatrix)  // NOLINT
     EXPECT_NE(factory.createInvKin("rtp_manipulator", "RTPInvKin", *scene_graph, scene_state), nullptr);
   }
 
-  // Whatever the schema can judge on its own - a required property missing, or a class that is not
-  // a registered factory - is rejected when the plugin document is loaded, before any solver is
-  // asked for.
-  auto expect_schema_rejects = [&](const YAML::Node& config) {
-    EXPECT_THROW(KinematicsPluginFactory(config, locator), std::runtime_error);  // NOLINT
-  };
-
-  // Whatever the schema cannot judge - joint identities, ranges measured against the scene graph's
+  // Whatever the YAML loader cannot judge - a required property missing, a class that is not
+  // a registered factory, joint identities, ranges measured against the scene graph's
   // limits, and the tool chain's joint count - survives loading and is caught on creation.
   auto expect_create_fails = [&](const YAML::Node& config) {
     KinematicsPluginFactory factory(config, locator);
@@ -727,7 +721,7 @@ TEST(TesseractKinematicsUnit, RTPInvKinFactoryFailureMatrix)  // NOLINT
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     auto plugin = rtpPlugin(config);
     plugin.remove("config");
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // Non-positive manipulator_reach
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
@@ -738,19 +732,19 @@ TEST(TesseractKinematicsUnit, RTPInvKinFactoryFailureMatrix)  // NOLINT
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     auto cfg = rtpPluginConfig(config);
     cfg.remove("tool_sample_resolution");
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // tool_sample_resolution entry missing 'name'
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     auto cfg = rtpPluginConfig(config);
     cfg["tool_sample_resolution"][0].remove("name");
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // tool_sample_resolution entry missing 'value'
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     auto cfg = rtpPluginConfig(config);
     cfg["tool_sample_resolution"][0].remove("value");
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // tool_sample_resolution joint name not in scene graph
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
@@ -779,35 +773,35 @@ TEST(TesseractKinematicsUnit, RTPInvKinFactoryFailureMatrix)  // NOLINT
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     auto cfg = rtpPluginConfig(config);
     cfg.remove("tool_positioner");
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // tool_positioner missing class entry
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     auto cfg = rtpPluginConfig(config);
     cfg["tool_positioner"].remove("class");
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // tool_positioner with unregistered class
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     rtpPluginConfig(config)["tool_positioner"]["class"] = "DoesNotExistFactory";
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // Missing manipulator
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     auto cfg = rtpPluginConfig(config);
     cfg.remove("manipulator");
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // manipulator missing class entry
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     auto cfg = rtpPluginConfig(config);
     cfg["manipulator"].remove("class");
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // manipulator with unregistered class
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
     rtpPluginConfig(config)["manipulator"]["class"] = "DoesNotExistFactory";
-    expect_schema_rejects(config);
+    expect_create_fails(config);
   }
   {  // tool_sample_resolution has more entries than tool positioner has joints
     YAML::Node config = tesseract_common::loadYamlString(yaml_str, locator);
